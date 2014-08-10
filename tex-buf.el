@@ -430,6 +430,11 @@ Try each original with each member of EXTENSIONS, in all directories
 in `TeX-check-path'. Returns true if any of the ORIGINALS with any of the
 EXTENSIONS are newer than DERIVED. Will prompt to save the buffer of any
 ORIGINALS which are modified but not saved yet."
+  ;; When TeX-master is prefixed with one or more "../"
+  (setq basename (file-name-nondirectory (TeX-master-directory)))
+  ;; Prepend the build dir value to the derived
+  (setq derived (concat TeX-build-directory basename))
+
   (let (existingoriginals
         found
 	(extensions (TeX-delete-duplicate-strings extensions))
@@ -573,9 +578,9 @@ QUEUE is non-nil when we are checking for the printer queue."
 The viewer is started either on region or master file,
 depending on the last command issued."
   (interactive)
-  (let ((output-file (TeX-active-master (TeX-output-extension))))
+  (let ((output-file (TeX-master-build-file (TeX-output-extension))))
     (if (file-exists-p output-file)
-	(TeX-command "View" 'TeX-active-master 0)
+		(TeX-command "View" 'TeX-master-build-file)
       (message "Output file %S does not exist." output-file))))
 
 (defun TeX-output-style-check (styles)

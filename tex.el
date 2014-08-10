@@ -54,6 +54,25 @@
   "Various AUCTeX settings."
   :group 'AUCTeX)
 
+(defcustom TeX-build-directory ""
+  "Command to run plain TeX."
+  :group 'AUCTeX
+  :options "build/"
+  :type 'string)
+
+(defun TeX-master-build-file (&optional extension)
+  "The master file currently being compiled.
+
+If optional argument EXTENSION is non-nil, add that file extension to
+the name.  Special value t means use `TeX-default-extension'.
+
+If optional second argument NONDIRECTORY is non-nil, do not include
+the directory."
+  (if (eq extension t)
+      (setq extension TeX-default-extension))
+  (setq output-file (concat TeX-build-directory (TeX-active-master extension)))
+  output-file)
+
 ;;; Site Customization
 ;;
 ;; The following variables are likely to need to be changed for your
@@ -519,7 +538,7 @@ string."
     ("%n" TeX-current-line)
     ("%d" file "dvi" t)
     ("%f" file "ps" t)
-    ("%o" (lambda nil (funcall file (TeX-output-extension) t)))
+    ("%o" (lambda nil (concat TeX-build-directory (funcall file (TeX-output-extension) t))))
     ;; for source specials the file name generated for the xdvi
     ;; command needs to be relative to the master file, just in
     ;; case the file is in a different subdirectory
@@ -1928,7 +1947,7 @@ output files."
 			     (symbol-value
 			      (intern (concat mode-prefix
 					      "-clean-output-suffixes"))))))
-	 (master (TeX-active-master))
+	 (master (TeX-master-build-file nil))
 	 (master-dir (file-name-directory master))
 	 (regexp (concat "\\("
 			 (regexp-quote (file-name-nondirectory master)) "\\|"
@@ -3462,11 +3481,22 @@ If TEX is a directory, generate style files for all files in the directory."
 	 (with-current-buffer (let (enable-local-eval)
 				(find-file-noselect tex))
 	   (message "Parsing %s..." tex)
-	   (TeX-auto-store (concat (file-name-as-directory auto)
-				   (TeX-strip-extension tex
-							TeX-all-extensions
-							t)
-				   ".el"))
+	   (setq exclude nil)
+	   ;; If RefTeX is available, check reftex-bibfile-ignore...
+	   (if (fboundp 'reftex-bibfile-ignore-list)
+		   (if (TeX-match-extension tex (list "bib"))
+			   (if (or (member tex reftex-bibfile-ignore-list)
+					   (delq nil (mapcar (lambda (re) (string-match re tex))
+										 reftex-bibfile-ignore-regexps)))
+				   ;; excluded file
+				   (setq exclude t)
+				 )))
+
+	   (if exclude
+		   (message "Bib file excluded: %s" tex)
+		 (TeX-auto-store (concat (file-name-as-directory auto)
+								 (TeX-strip-extension tex TeX-all-extensions t)
+								 ".el")))
 	   (kill-buffer (current-buffer))
 	   (message "Parsing %s... done" tex)))))
 
